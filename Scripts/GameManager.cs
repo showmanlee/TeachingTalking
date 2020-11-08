@@ -422,11 +422,6 @@ public class GameManager : MonoBehaviour {
 
 	// 어근 변형 자동학습
 	void AutoRoot(int main, int num, int sub, bool dir) {
-		// 카드군, 카드 번호, 붙는 카드군, 방향
-
-		// 여기는 어근이 원본과 다른 경우, 다시 말해 !isOriginal[i]인 경우에 자동학습하는 곳
-		// 같은 케이스라도 어근 변형 형태가 많을 수 있으니 주의(i.e. 먹었다, 먹는다)
-
 		// 현재 카드에서 생성된 어근이 다른 모든 조합식 추출
 		List<CardCombine> currentCombines = new List<CardCombine>();
 		// 같은 카드군의 다른 카드에서 현재 카드군 조합의 어근이 다른 조합식 추출
