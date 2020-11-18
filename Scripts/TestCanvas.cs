@@ -25,6 +25,7 @@ public class TestCanvas : MonoBehaviour {
 	List<List<TestCombine>> orderedCombines = new List<List<TestCombine>>();            // 테스트 우선순위로 정렬된 리스트
 	List<int> selectedCombines = new List<int>();                                       // 문장 조합에 실제로 사용된 orderedCombines 조합식 인덱스 리스트
 	List<List<int>> reservedCombines = new List<List<int>>();                           // 평가 후 우선순위 감소를 위한 저장 리스트(앞전, 앞후, 감소 횟수)
+	List<CardCombine> usedCombines = new List<CardCombine>();							// 문장에서 실제로 사용된 조합식
 	string result;
 
 	void Start() {
@@ -301,36 +302,52 @@ public class TestCanvas : MonoBehaviour {
 
 	void MakeSentence() {
 		result = "";
+		usedCombines.Clear();
 
 		// 선택된 카드가 하나라면
 		if (selectedCards.Count == 1) {
 			int m = System.Convert.ToInt32(selectedCards[0].name.Split('_')[1]), n = System.Convert.ToInt32(selectedCards[0].name.Split('_')[2]);
 			resultWindow.transform.GetChild(1).GetComponent<Text>().text = GameManager.instance.cards[m - 1][n - 1].name;
+			usedCombines.Add(new CardCombine(GameManager.instance.cards[m - 1][n - 1].name, true, -1, true, GameManager.instance.cards[m - 1][n - 1].name));
 			return;
 		}
 
 		for (int i = 0; i < selectedCards.Count; i++) {
 			// 맨 끝인 경우
-			if (i == 0)
+			if (i == 0) {
 				result += orderedCombines[i][selectedCombines[i]].combine.style;
-			else if (i == selectedCards.Count - 1)
+				usedCombines.Add(orderedCombines[i][selectedCombines[i]].combine);
+			}
+			else if (i == selectedCards.Count - 1) {
 				result += orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.style;
+				usedCombines.Add(orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine);
+			}
 			else {
 				string f = orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.style;   // 앞
 				string b = orderedCombines[i * 2][selectedCombines[i * 2]].combine.style;           // 뒤
 																									// 모두 원형 = 둘이 같음
-				if (orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.combinedWith == -2 && orderedCombines[i * 2][selectedCombines[i * 2]].combine.combinedWith == -2)
+				if (orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.combinedWith == -2 && orderedCombines[i * 2][selectedCombines[i * 2]].combine.combinedWith == -2) {
 					result += f;
+					usedCombines.Add(orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine);
+				}
 				// 둘 중 하나가 원형 = 원형 아닌 쪽
-				else if (orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.combinedWith == -2 || orderedCombines[i * 2][selectedCombines[i * 2]].combine.combinedWith == -2)
+				else if (orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.combinedWith == -2 || orderedCombines[i * 2][selectedCombines[i * 2]].combine.combinedWith == -2) {
 					result += orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.combinedWith == -2 ? b : f;
+					usedCombines.Add(orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.combinedWith == -2 ?
+						orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine : orderedCombines[i * 2][selectedCombines[i * 2]].combine);
+				}
 				else {
 					// 앞과 뒤가 같음
-					if (f == b)
+					if (f == b) {
 						result += f;
+						usedCombines.Add(orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine);
+					}
 					// 앞과 뒤가 다름 = 가중치가 큰 쪽
-					else
+					else {
 						result += orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.bias > orderedCombines[i * 2][selectedCombines[i * 2]].combine.bias ? f : b;
+						usedCombines.Add(orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.bias > orderedCombines[i * 2][selectedCombines[i * 2]].combine.bias ?
+							orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine : orderedCombines[i * 2][selectedCombines[i * 2]].combine);
+					}
 				}
 			}
 		}
@@ -349,91 +366,45 @@ public class TestCanvas : MonoBehaviour {
 						mf = System.Convert.ToInt32(selectedCards[i - 1].name.Split('_')[1]);
 					else if (i != selectedCards.Count - 1)
 						mr = System.Convert.ToInt32(selectedCards[i + 1].name.Split('_')[1]);
+					if (selectedCards.Count == 1)
+						break;
 
-					if (i * 2 - 1 != -1) {                                          // 앞쪽
-						if (orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].index != -1) {  // 기존에 있던 조합식
-							CardCombine cc;
-							if (orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.combinedWith != mf) {       // 결합 카드군이 다른 조합식이 선택됐다면?
-								CardCombine cd = orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine;
-								cc = new CardCombine(cd.style, cd.position, mf, cd.isEnd, cd.root);
-							}
-							else {
-								cc = GameManager.instance.cards[m - 1][n - 1].combines[orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].index];
-							}
-							GameManager.instance.cards[m - 1][n - 1].CombineAdd(cc, 5);
-							string front = cc.style.Split(new[] { cc.root }, StringSplitOptions.None)[0].TrimStart();
-							// 형태소 추가
-							bool morpfound = false;
-							foreach (Morpheme morp in GameManager.instance.morphemes)
-								if (morp.name == cc.root) {
-									morpfound = true;
-									if (front != "")
-										morp.Connects(front, mf, true);
-									break;
-								}
-							if (!morpfound) {
-								GameManager.instance.morphemes.Add(new Morpheme(cc.root, m, n));
+					if (i != 0) {                                   // 앞쪽
+						CardCombine cc = new CardCombine(usedCombines[i].style, true, mf, i == selectedCards.Count - 1, usedCombines[i].root);
+						GameManager.instance.cards[m - 1][n - 1].CombineAdd(cc, 5);
+						string front = cc.style.Split(new[] { cc.root }, StringSplitOptions.None)[0].TrimStart();
+						// 형태소 추가
+						bool morpfound = false;
+						foreach (Morpheme morp in GameManager.instance.morphemes)
+							if (morp.name == cc.root) {
+								morpfound = true;
 								if (front != "")
-									GameManager.instance.morphemes[GameManager.instance.morphemes.Count - 1].Connects(front, mf, true);
+									morp.Connects(front, mf, true);
+								break;
 							}
-						}
-						else {                                                                      // 임시용 원래 이름 조합식
-							CardCombine cc = orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine;
-							cc.combinedWith = mf;
-							GameManager.instance.cards[m - 1][n - 1].CombineAdd(cc, 5);
-							// 원래 이름밖에 없으니 어근만 저장
-							bool morpfound = false;
-							foreach (Morpheme morp in GameManager.instance.morphemes) {
-								if (morp.name == cc.root) {
-									morpfound = true;
-									break;
-								}
-							}
-							if (!morpfound)
-								GameManager.instance.morphemes.Add(new Morpheme(cc.root, m, n));
+						if (!morpfound) {
+							GameManager.instance.morphemes.Add(new Morpheme(cc.root, m, n));
+							if (front != "")
+								GameManager.instance.morphemes[GameManager.instance.morphemes.Count - 1].Connects(front, mf, true);
 						}
 					}
-					if (i * 2 < (selectedCards.Count - 1) * 2) {                // 뒷쪽
-						if (orderedCombines[i * 2][selectedCombines[i * 2]].index != -1) {          // 기존에 있던 조합식
-							CardCombine cc;
-							if (orderedCombines[i * 2][selectedCombines[i * 2]].combine.combinedWith != mr) {       // 결합 카드군이 다른 조합식이 선택됐다면?
-								CardCombine cd = orderedCombines[i * 2][selectedCombines[i * 2]].combine;
-								cc = new CardCombine(cd.style, cd.position, mf, cd.isEnd, cd.root);
-							}
-							else {
-								cc = GameManager.instance.cards[m - 1][n - 1].combines[orderedCombines[i * 2][selectedCombines[i * 2]].index];
-							}
-							GameManager.instance.cards[m - 1][n - 1].CombineAdd(cc, 5);
-							string rear = cc.style.Split(new[] { cc.root }, StringSplitOptions.None)[1].TrimEnd();
-							// 형태소 추가
-							bool morpfound = false;
-							foreach (Morpheme morp in GameManager.instance.morphemes)
-								if (morp.name == cc.root) {
-									morpfound = true;
-									if (rear != "")
-										morp.Connects(rear, mr, false);
-									break;
-								}
-							if (!morpfound) {
-								GameManager.instance.morphemes.Add(new Morpheme(cc.root, m, n));
+					if (i != selectedCards.Count - 1) {             // 뒷쪽
+						CardCombine cc = new CardCombine(usedCombines[i].style, false, mr, false, usedCombines[i].root);
+						GameManager.instance.cards[m - 1][n - 1].CombineAdd(cc, 5);
+						string rear = cc.style.Split(new[] { cc.root }, StringSplitOptions.None)[1].TrimEnd();
+						// 형태소 추가
+						bool morpfound = false;
+						foreach (Morpheme morp in GameManager.instance.morphemes)
+							if (morp.name == cc.root) {
+								morpfound = true;
 								if (rear != "")
-									GameManager.instance.morphemes[GameManager.instance.morphemes.Count - 1].Connects(rear, mr, false);
+									morp.Connects(rear, mr, false);
+								break;
 							}
-						}
-						else {                                                                      // 임시용 원래 이름 조합식
-							CardCombine cc = orderedCombines[i * 2][selectedCombines[i * 2]].combine;
-							cc.combinedWith = mr;
-							GameManager.instance.cards[m - 1][n - 1].CombineAdd(cc, 5);
-							// 원래 이름밖에 없으니 어근만 저장
-							bool morpfound = false;
-							foreach (Morpheme morp in GameManager.instance.morphemes) {
-								if (morp.name == cc.root) {
-									morpfound = true;
-									break;
-								}
-							}
-							if (!morpfound)
-								GameManager.instance.morphemes.Add(new Morpheme(cc.root, m, n));
+						if (!morpfound) {
+							GameManager.instance.morphemes.Add(new Morpheme(cc.root, m, n));
+							if (rear != "")
+								GameManager.instance.morphemes[GameManager.instance.morphemes.Count - 1].Connects(rear, mr, false);
 						}
 					}
 				}
@@ -447,40 +418,16 @@ public class TestCanvas : MonoBehaviour {
 						mf = System.Convert.ToInt32(selectedCards[i - 1].name.Split('_')[1]);
 					else if (i != selectedCards.Count - 1)
 						mr = System.Convert.ToInt32(selectedCards[i + 1].name.Split('_')[1]);
-					if (i * 2 - 1 != -1) {
-						if (orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].index != -1) {  // 기존에 있던 조합식
-							CardCombine cc;
-							if (orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.combinedWith != mf) {       // 결합 카드군이 다른 조합식이 선택됐다면?
-								CardCombine cd = orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine;
-								cc = new CardCombine(cd.style, cd.position, mf, cd.isEnd, cd.root);
-							}
-							else
-								cc = GameManager.instance.cards[m - 1][n - 1].combines[orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].index];
-							GameManager.instance.cards[m - 1][n - 1].CombineAdd(cc, 1);
-						}
-						else {                                                                      // 임시용 원래 이름 조합식
-							CardCombine cc = orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine;
-							cc.combinedWith = mf;
-							GameManager.instance.cards[m - 1][n - 1].CombineAdd(cc, 1);
-						}
+					if (selectedCards.Count == 1)
+						break;
+
+					if (i != 0) {                                   // 앞쪽
+						CardCombine cc = new CardCombine(usedCombines[i].style, true, mf, i == selectedCards.Count - 1, usedCombines[i].root);
+						GameManager.instance.cards[m - 1][n - 1].CombineAdd(cc, 1);
 					}
-					if (i * 2 < (selectedCards.Count - 1) * 2) {                // 뒷쪽
-						if (orderedCombines[i * 2][selectedCombines[i * 2]].index != -1) {          // 기존에 있던 조합식
-							CardCombine cc;
-							if (orderedCombines[i * 2][selectedCombines[i * 2]].combine.combinedWith != mr) {           // 결합 카드군이 다른 조합식이 선택됐다면?
-								CardCombine cd = orderedCombines[i * 2][selectedCombines[i * 2]].combine;
-								cc = new CardCombine(cd.style, cd.position, mf, cd.isEnd, cd.root);
-								GameManager.instance.cards[m - 1][n - 1].CombineAdd(cc, 1);
-							}
-							else
-								cc = GameManager.instance.cards[m - 1][n - 1].combines[orderedCombines[i * 2][selectedCombines[i * 2]].index];
-							GameManager.instance.cards[m - 1][n - 1].CombineAdd(cc, 1);
-						}
-						else {                                                                      // 임시용 원래 이름 조합식
-							CardCombine cc = orderedCombines[i * 2][selectedCombines[i * 2]].combine;
-							cc.combinedWith = mr;
-							GameManager.instance.cards[m - 1][n - 1].CombineAdd(cc, 1);
-						}
+					if (i != selectedCards.Count - 1) {             // 뒷쪽
+						CardCombine cc = new CardCombine(usedCombines[i].style, false, mr, false, usedCombines[i].root);
+						GameManager.instance.cards[m - 1][n - 1].CombineAdd(cc, 1);
 					}
 				}
 				decisions.SetActive(false);
