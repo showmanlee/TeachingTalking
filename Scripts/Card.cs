@@ -22,7 +22,7 @@ public class Card : MonoBehaviour {
 		// 카드 날리기
 		if (!selected) {
 			if (Input.GetKeyDown(KeyCode.F1)) {
-				GetComponent<Rigidbody>().AddForce(new Vector3(Random.Range(-400, 400), 400, Random.Range(-200, 400)));
+				GetComponent<Rigidbody>().AddForce(new Vector3(Random.Range(-400, 400), 400, Random.Range(-300, 400)));
 				GetComponent<Rigidbody>().AddTorque(new Vector3(Random.Range(-180, 180), Random.Range(-180, 180), Random.Range(-180, 180)));
 			}
 			if (transform.position.y > 7.5f || transform.position.y < 0f)

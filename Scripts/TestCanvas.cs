@@ -25,7 +25,7 @@ public class TestCanvas : MonoBehaviour {
 	List<List<TestCombine>> orderedCombines = new List<List<TestCombine>>();            // 테스트 우선순위로 정렬된 리스트
 	List<int> selectedCombines = new List<int>();                                       // 문장 조합에 실제로 사용된 orderedCombines 조합식 인덱스 리스트
 	List<List<int>> reservedCombines = new List<List<int>>();                           // 평가 후 우선순위 감소를 위한 저장 리스트(앞전, 앞후, 감소 횟수)
-	List<CardCombine> usedCombines = new List<CardCombine>();							// 문장에서 실제로 사용된 조합식
+	List<CardCombine> usedCombines = new List<CardCombine>();                           // 문장에서 실제로 사용된 조합식
 	string result;
 
 	void Start() {
@@ -302,13 +302,16 @@ public class TestCanvas : MonoBehaviour {
 
 	void MakeSentence() {
 		result = "";
-		usedCombines.Clear();
+		if (usedCombines.Count == 0) {
+			for (int i = 0; i < selectedCards.Count; i++)
+				usedCombines.Add(new CardCombine());
+		}
 
 		// 선택된 카드가 하나라면
 		if (selectedCards.Count == 1) {
 			int m = System.Convert.ToInt32(selectedCards[0].name.Split('_')[1]), n = System.Convert.ToInt32(selectedCards[0].name.Split('_')[2]);
 			resultWindow.transform.GetChild(1).GetComponent<Text>().text = GameManager.instance.cards[m - 1][n - 1].name;
-			usedCombines.Add(new CardCombine(GameManager.instance.cards[m - 1][n - 1].name, true, -1, true, GameManager.instance.cards[m - 1][n - 1].name));
+			usedCombines[0] = new CardCombine(GameManager.instance.cards[m - 1][n - 1].name, true, -1, true, GameManager.instance.cards[m - 1][n - 1].name);
 			return;
 		}
 
@@ -316,37 +319,35 @@ public class TestCanvas : MonoBehaviour {
 			// 맨 끝인 경우
 			if (i == 0) {
 				result += orderedCombines[i][selectedCombines[i]].combine.style;
-				usedCombines.Add(orderedCombines[i][selectedCombines[i]].combine);
+				usedCombines[i] = orderedCombines[i][selectedCombines[i]].combine;
 			}
 			else if (i == selectedCards.Count - 1) {
 				result += orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.style;
-				usedCombines.Add(orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine);
+				usedCombines[i] = orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine;
 			}
 			else {
-				string f = orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.style;   // 앞
-				string b = orderedCombines[i * 2][selectedCombines[i * 2]].combine.style;           // 뒤
-																									// 모두 원형 = 둘이 같음
-				if (orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.combinedWith == -2 && orderedCombines[i * 2][selectedCombines[i * 2]].combine.combinedWith == -2) {
-					result += f;
-					usedCombines.Add(orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine);
+				CardCombine f = orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine;   // 앞
+				CardCombine b = orderedCombines[i * 2][selectedCombines[i * 2]].combine;           // 뒤
+																								   // 모두 원형 = 둘이 같음
+				if (f.combinedWith == -2 && b.combinedWith == -2) {
+					result += f.style;
+					usedCombines[i] = f;
 				}
 				// 둘 중 하나가 원형 = 원형 아닌 쪽
-				else if (orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.combinedWith == -2 || orderedCombines[i * 2][selectedCombines[i * 2]].combine.combinedWith == -2) {
-					result += orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.combinedWith == -2 ? b : f;
-					usedCombines.Add(orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.combinedWith == -2 ?
-						orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine : orderedCombines[i * 2][selectedCombines[i * 2]].combine);
+				else if (f.combinedWith == -2 || b.combinedWith == -2) {
+					result += f.combinedWith == -2 ? b.style : f.style;
+					usedCombines[i] = (f.combinedWith == -2 ? b : f);
 				}
 				else {
 					// 앞과 뒤가 같음
 					if (f == b) {
-						result += f;
-						usedCombines.Add(orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine);
+						result += f.style;
+						usedCombines.Add(f);
 					}
 					// 앞과 뒤가 다름 = 가중치가 큰 쪽
 					else {
-						result += orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.bias > orderedCombines[i * 2][selectedCombines[i * 2]].combine.bias ? f : b;
-						usedCombines.Add(orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine.bias > orderedCombines[i * 2][selectedCombines[i * 2]].combine.bias ?
-							orderedCombines[i * 2 - 1][selectedCombines[i * 2 - 1]].combine : orderedCombines[i * 2][selectedCombines[i * 2]].combine);
+						result += f.bias > b.bias ? f.style : b.style;
+						usedCombines[i] = (f.bias > b.bias ? f : b);
 					}
 				}
 			}
@@ -448,7 +449,7 @@ public class TestCanvas : MonoBehaviour {
 		foreach (var c in selectedCards)
 			c.GetComponent<Card>().Unselect();
 		OnDisable();
-		orderedCombines.Clear(); selectedCombines.Clear(); reservedCombines.Clear();
+		orderedCombines.Clear(); selectedCombines.Clear(); reservedCombines.Clear(); usedCombines.Clear();
 		GameManager.instance.SaveData();
 	}
 

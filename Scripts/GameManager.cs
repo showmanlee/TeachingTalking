@@ -7,7 +7,7 @@ using UnityEngine;
 using UnityEngine.UI;
 public enum Modes { Main, Noun, Syntax, Sentence, Test }
 public class GameManager : MonoBehaviour {
-	public static GameManager instance;
+	public static GameManager instance;					
 	public Text slotText;
 	public GameObject robot, cardcam, cardCanvas;
 	public GameObject[] Canvases;
@@ -19,6 +19,7 @@ public class GameManager : MonoBehaviour {
 	Modes mode;
 	int slot = 0;
 
+	// Singleton
 	void Awake() {
 		instance = this;
 	}
@@ -50,7 +51,6 @@ public class GameManager : MonoBehaviour {
 		}
 		bundle.Unload(false);
 
-		Debug.Log("Hello");
 		// 카드 수 확인
 		CardLoad();
 	}
